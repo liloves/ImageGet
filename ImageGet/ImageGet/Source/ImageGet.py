@@ -1,29 +1,25 @@
 #-*- coding: UTF-8 -*-
 
-
 '''
 Author: Li Geng
 Meaning: App, Image get
 Description: Use various module to complete the Web Detect with UI form
              if you know the http website, type it into dialog for customing to
              set the website address and smell the files in HTML
-
 '''
-
 
 import urllib
 import re
 import os
+
 from Tkinter import *
 import tkFileDialog
 import threading
 import zlib
 
-
 from HTMLParser import HTMLParser
 from cStringIO import StringIO
 from urlparse import urljoin, urlparse
-
 
 
 
@@ -42,10 +38,9 @@ def getHtml(url):
     if fp.getcode() == 200:
         bytesText = fp.read()
         if fp.headers.get('content-encoding') == 'gzip':
-            return zlib.decompress(bytesText ,16+zlib.MAX_WBITS)
+            return zlib.decompress(bytesText, 16+zlib.MAX_WBITS)
         else:
             return bytesText
-        
     elif fp.getcode() == 404:
         print u'网址未找到'
         return ''
@@ -59,7 +54,7 @@ def saveGraph(readyPath,imglist):
     x = 0
     for imgurl in imglist:
         try:
-            urllib.urlretrieve(imgurl,readyPath+'/%s.jpg' % x)
+            urllib.urlretrieve(imgurl, readyPath + '/%s.jpg' % x)
             x += 1
         except Exception,e:
             print e
@@ -92,16 +87,20 @@ def getImg(html, IOobj, rootPath = '/GraphFile/'):
 
 
 
-
+# HTML Parser to locate the tag of XXX
 class AnchorParser(HTMLParser):
     
+    def __init__(self, tagName = 'a', tagContext = 'href'):
+        self.tag_name = tagName
+        self.tag_context = tagContext
+
     def handle_starttag(self, tag, attrs):
-        if tag != 'a':
+        if tag != self.tag_name:
             return
         if not hasattr(self, 'data'):
             self.data = []
         for attr in attrs:
-            if attr[0] == 'href':
+            if attr[0] == self.tag_context:
                 self.data.append(attr[1])
 
     def getLink(self, webAddr):
@@ -138,8 +137,8 @@ class Widget():
         self.ety1.grid(row=0, column=1, sticky=W)
         self.txt1.grid(row=2, column=0, columnspan=10, rowspan=3)
         # var
-        self.nonFlag = 0      # 配置标记：1，空配置;0,有配置
-        self.threadpool = []              #线程池
+        self.nonFlag = 0            # 配置标记：1,空配置;0,有配置
+        self.threadpool = []        #线程池
         # director
         self.rootPath = './GraphFile'    # 默认保存位置
         if not os.path.exists(self.rootPath):
@@ -154,8 +153,6 @@ class Widget():
         else:
             self.addMessage("上次结束的地址为:" + self.webAddr + '\n')
         
-
-
     def menuInit(self):
         # main menu
         menubar = Menu(self.root)
@@ -177,13 +174,12 @@ class Widget():
     def configureDir(self):
         getPath =  \
             tkFileDialog.askdirectory(parent=self.root,initialdir="/",  \
-            title='选取文件夹以保存内容')
+            title='选取保存内容的文件夹')
         if getPath == '':
             self.addMessage("未设置目录，将使用默认路径: " + self.rootPath + '\n')
             os.mkdir(self.rootPath)    # 未存在默认目录需要创建
         else:
             self.rootPath = getPath
-        
         
     def showWebAddr(self):
         self.addMessage('设置地址为'+ self.webAddr + '\n')
@@ -233,7 +229,6 @@ class Widget():
         self.txt1.insert(0.0,text)
 
 
-
 # configuration file save & load
 class Config():
     def __init__(self,configFileName = 'store_html.ini'):
@@ -256,7 +251,6 @@ class Config():
         finally:
              file_object.close()
              
-
 
 if __name__ == "__main__":
 

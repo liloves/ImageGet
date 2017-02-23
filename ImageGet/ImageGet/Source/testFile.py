@@ -1,5 +1,5 @@
 #-*- coding: UTF-8 -*-
-from getImg import *
+from ImageGet import *
 import urllib2
 import urllib
 

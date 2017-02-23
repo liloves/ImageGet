@@ -22,13 +22,11 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="ImageGet.py" />
     <Compile Include="Source\ImageGet.py" />
     <Compile Include="Source\SqlServe.py" />
     <Compile Include="Source\testFile.py" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="NewFolder1\" />
     <Folder Include="Source\" />
   </ItemGroup>
   <PropertyGroup>

@@ -24,7 +24,7 @@
   <ItemGroup>
     <Compile Include="Source\ImageGet.py" />
     <Compile Include="Source\SqlServe.py" />
-    <Compile Include="Source\testFile.py" />
+    <Compile Include="Source\TestFile.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Source\" />

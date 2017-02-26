@@ -15,8 +15,8 @@ import os
 from Tkinter import *
 import tkFileDialog
 import threading
-import zlib
 
+import zlib
 from HTMLParser import HTMLParser
 from cStringIO import StringIO
 from urlparse import urljoin, urlparse
@@ -37,6 +37,7 @@ def getHtml(url):
     fp = urllib.urlopen(url)
     if fp.getcode() == 200:
         bytesText = fp.read()
+        print fp.headers
         if fp.headers.get('content-encoding') == 'gzip':
             return zlib.decompress(bytesText, 16+zlib.MAX_WBITS)
         else:
@@ -66,7 +67,7 @@ def getImg(html, IOobj, rootPath = '/GraphFile/'):
     imglist = regFind(r'<img.*?src="(.+?\.jpg)".*?>',html)   #解析图像列表
     titlelist = regFind(r'<head>[\s\S]*<title>([\s\S]*)</title>[\s\S]*</head>',html)
     charset = regFind(r'<*?charset="(.+?)".*?>',html)
-    htmlTitle = titlelist[0].decode('GBK')       #从list中提取出title的字符串变量,并解码为python的内核字符码unicode
+    htmlTitle = titlelist[0].decode('GBK')       #从list中提取出title的字符串变量,并解码为unicode
     htmlTitleUTF8 = htmlTitle.encode('utf-8')
     IOobj.addMessage(htmlTitleUTF8 + '>>>' + "共有" + str(len(imglist)) + "张图片\n")
     readyPath = rootPath + '/' + htmlTitle
@@ -89,14 +90,17 @@ def getImg(html, IOobj, rootPath = '/GraphFile/'):
 
 # HTML Parser to locate the tag of XXX
 class AnchorParser(HTMLParser):
-    
-    def __init__(self, tagName = 'a', tagContext = 'href'):
-        self.tag_name = tagName
-        self.tag_context = tagContext
+        
 
     def handle_starttag(self, tag, attrs):
+        self.tag_name = 'meta'
+        self.tag_context = 'charset'
+        
         if tag != self.tag_name:
             return
+
+        print tag
+        print attrs
         if not hasattr(self, 'data'):
             self.data = []
         for attr in attrs:
@@ -111,19 +115,20 @@ class AnchorParser(HTMLParser):
             AddrGroup.append(urljoin(webAddr,x))
         return AddrGroup
 
-
-
  
 # Main Widget class for showing the UI
 class Widget():
     
     def __init__(self):
+
         # tkinter main
         self.root = Tk()
         self.root.minsize(400, 200)
         self.root.title("Get Image Serve")
+
         # menu
         self.menuInit()
+
         # active elements
         self.butnForm = Frame()
         self.btn1 = Button(self.butnForm,text = "载入地址",command = self.btn1Clicked).pack(expand=YES, fill="both")
@@ -132,26 +137,20 @@ class Widget():
         self.ety1 = Entry(self.root)
         self.txt1= Text(self.root)
         self.txt1.bind("<KeyPress>", lambda e : "break")
+
         ## pack
         self.butnForm.grid(row=0, column=0, sticky=W)
         self.ety1.grid(row=0, column=1, sticky=W)
         self.txt1.grid(row=2, column=0, columnspan=10, rowspan=3)
+
         # var
         self.nonFlag = 0            # 配置标记：1,空配置;0,有配置
-        self.threadpool = []        #线程池
-        # director
-        self.rootPath = './GraphFile'    # 默认保存位置
-        if not os.path.exists(self.rootPath):
-            self.addMessage("目前未设定保存文件夹,请指定一个保存地址\n")
-            self.configureDir()
-        # 读取历史配置
-        self.ConfigObj = Config(self.rootPath + '/store_html.ini')         #配置文件
-        self.webAddr = self.ConfigObj.LoadConfig()  #加载保存的地址
-        if self.webAddr == '':
-            self.nonFlag = 1
-            self.addMessage("目前没有读到上次结束的地址,请输入一个网址\n")
-        else:
-            self.addMessage("上次结束的地址为:" + self.webAddr + '\n')
+        self.threadpool = []        # 线程池
+
+        # director check
+        self.checkDirectory()
+        
+ 
         
     def menuInit(self):
         # main menu
@@ -164,25 +163,20 @@ class Widget():
         menubar.add_cascade(label = "开始", menu = filemenu)
         # child menu
         filemenu = Menu(menubar, tearoff=0)  
-        filemenu.add_command(label = "设置存储文件夹", command = self.configureDir)
+        filemenu.add_command(label = "设置存储文件夹", command = self.directoryConfig)
+        filemenu.add_command(label = "重新加载配置文件", command = self.loadConfig)
         filemenu.add_separator()  
         filemenu.add_command(label = "设置爬虫")  
         menubar.add_cascade(label = "参数配置", menu = filemenu) 
         # link
         self.root.config(menu=menubar)
 
-    def configureDir(self):
-        getPath =  \
-            tkFileDialog.askdirectory(parent=self.root,initialdir="/",  \
-            title='选取保存内容的文件夹')
-        if getPath == '':
-            self.addMessage("未设置目录，将使用默认路径: " + self.rootPath + '\n')
-            os.mkdir(self.rootPath)    # 未存在默认目录需要创建
-        else:
-            self.rootPath = getPath
+    
         
     def showWebAddr(self):
         self.addMessage('设置地址为'+ self.webAddr + '\n')
+
+
     
     def btn1Clicked(self):
         if self.ety1.get() != '':
@@ -197,13 +191,13 @@ class Widget():
             self.webAddr = self.ety1.get()
         if self.webAddr == '' :
             self.nonFlag = 1
-            self.addMessage("目前没有读到上次结束的地址,请输入一个网址\n")
+            self.addMessage('目前没有读到上次结束的地址,请输入一个网址\n')
         else:
             try:
                 thisThread = threading.Thread(target=self.webDetect,args=(self.webAddr,self))
                 thisThread.start()
             except Exception,e:
-                print "线程创建或启动异常:",Exception,":",e
+                print '线程创建或启动异常:',Exception,':',e
 
     def btn3Clicked(self):
         self.addMessage('保存地址为:'+self.webAddr + '\n')
@@ -214,7 +208,7 @@ class Widget():
         self.root.mainloop()
 
     def webDetect(self,webAddr,IOobj):
-        IOobj.addMessage("加载地址:" + webAddr + "\n")
+        IOobj.addMessage('加载地址:' + webAddr + '\n')
         htmlText = getHtml(webAddr)
         thisThread = threading.Thread(target=getImg,args=(htmlText, IOobj, self.rootPath))
         thisThread.start()
@@ -222,11 +216,47 @@ class Widget():
         try :
             self.webAddr =  'http://' + urlparse(webAddr).netloc + GraspList[1]    #爬虫目标地址
         except Exception,e:
-            print "爬虫问题",Exception,":",e
+            print '爬虫问题',Exception,':',e
             return 'http://' + urlparse(webAddr).netloc + GraspList[0]    #爬虫目标地址
     
     def addMessage(self,text):
         self.txt1.insert(0.0,text)
+
+    def checkDirectory(self):
+        self.rootPath = './GraphFile'    # 默认保存位置
+        if not os.path.exists(self.rootPath):
+            self.addMessage('目前未设定保存文件夹,请指定一个保存地址\n')
+            self.directoryConfig()
+        self.loadConfig()
+
+    def loadConfig(self):
+        # 读取历史配置
+        self.iniFile = 'store_html.ini'
+        self.ConfigObj = Config(self.rootPath + '/'+ self.iniFile)         #配置文件
+        self.webAddr = self.ConfigObj.LoadConfig()  #加载保存的地址
+        if self.webAddr == '':
+            self.nonFlag = 1
+            self.addMessage('目前没有读到上次结束的地址,请输入一个网址\n')
+        else:
+            self.addMessage('上次结束的地址为:' + self.webAddr + '\n')
+
+    def directoryConfig(self):
+        getPath =  \
+            tkFileDialog.askdirectory(parent=self.root,initialdir="/",  \
+            title='选取保存内容的文件夹')
+        if getPath != '':
+            self.addMessage(u'设置目录为: ' + self.rootPath + u'\n')
+            self.rootPath = getPath
+        else:
+            self.addMessage(u'未设置目录\n')
+            #self.addMessage(u'未设置目录，将使用默认路径: ' + self.rootPath + u'\n')
+            #if not os.path.exists(self.rootPath):
+                #os.mkdir(self.rootPath)    # 未存在默认目录需要创建
+            
+
+
+
+        
 
 
 # configuration file save & load
@@ -252,7 +282,7 @@ class Config():
              file_object.close()
              
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 
     winObj = Widget()
     winObj.mainloop()

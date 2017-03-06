@@ -37,7 +37,6 @@ def getHtml(url):
     fp = urllib.urlopen(url)
     if fp.getcode() == 200:
         bytesText = fp.read()
-        print fp.headers
         if fp.headers.get('content-encoding') == 'gzip':
             return zlib.decompress(bytesText, 16+zlib.MAX_WBITS)
         else:
@@ -63,10 +62,9 @@ def saveGraph(readyPath,imglist):
     return x
         
 
-def getImg(html, IOobj, rootPath = '/GraphFile/'):
+def getImg(html, IOobj, rootPath):
     imglist = regFind(r'<img.*?src="(.+?\.jpg)".*?>',html)   #解析图像列表
     titlelist = regFind(r'<head>[\s\S]*<title>([\s\S]*)</title>[\s\S]*</head>',html)
-    charset = regFind(r'<*?charset="(.+?)".*?>',html)
     htmlTitle = titlelist[0].decode('GBK')       #从list中提取出title的字符串变量,并解码为unicode
     htmlTitleUTF8 = htmlTitle.encode('utf-8')
     IOobj.addMessage(htmlTitleUTF8 + '>>>' + "共有" + str(len(imglist)) + "张图片\n")
@@ -88,17 +86,14 @@ def getImg(html, IOobj, rootPath = '/GraphFile/'):
 
 
 
-# HTML Parser to locate the tag of XXX
+# HTML Parser to locate the tag of charset
 class AnchorParser(HTMLParser):
         
-
     def handle_starttag(self, tag, attrs):
         self.tag_name = 'meta'
         self.tag_context = 'charset'
-        
         if tag != self.tag_name:
             return
-
         print tag
         print attrs
         if not hasattr(self, 'data'):
@@ -150,8 +145,6 @@ class Widget():
         # director check
         self.checkDirectory()
         
- 
-        
     def menuInit(self):
         # main menu
         menubar = Menu(self.root)
@@ -171,26 +164,21 @@ class Widget():
         # link
         self.root.config(menu=menubar)
 
-    
-        
     def showWebAddr(self):
-        self.addMessage('设置地址为'+ self.webAddr + '\n')
-
-
+        if self.webAddr == '':
+            self.addMessage('目标地址为空\n')
+        else:
+            self.addMessage('设置地址为'+ self.webAddr + '\n')
     
     def btn1Clicked(self):
         if self.ety1.get() != '':
             self.webAddr = self.ety1.get()
-            print type(self.webAddr)
             self.addMessage('设置地址为:'+self.webAddr + '\n')
         else:
             self.addMessage('设置地址为空\n')
 
     def btn2Clicked(self):
-        if self.nonFlag == 1:
-            self.webAddr = self.ety1.get()
         if self.webAddr == '' :
-            self.nonFlag = 1
             self.addMessage('目前没有读到上次结束的地址,请输入一个网址\n')
         else:
             try:
@@ -245,7 +233,7 @@ class Widget():
             tkFileDialog.askdirectory(parent=self.root,initialdir="/",  \
             title='选取保存内容的文件夹')
         if getPath != '':
-            self.addMessage(u'设置目录为: ' + self.rootPath + u'\n')
+            self.addMessage(u'设置目录为: ' + getPath + u'\n')
             self.rootPath = getPath
         else:
             self.addMessage(u'未设置目录\n')
@@ -253,11 +241,6 @@ class Widget():
             #if not os.path.exists(self.rootPath):
                 #os.mkdir(self.rootPath)    # 未存在默认目录需要创建
             
-
-
-
-        
-
 
 # configuration file save & load
 class Config():

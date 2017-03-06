@@ -22,11 +22,15 @@ import urllib
 ##listname = ListName()
 ##listname.feed(content)
 
-webAddr = 'http://www.divcss5.com/html/h546.shtml'
+
+
+
+webAddr = 'http://www.gamersky.com/'
 iparser = AnchorParser()
 print iparser.getLink(webAddr)
 
 
-
+reg = r'<meta.+?charset\"?=(.+?)\"?.+?>'
+print regFind(reg,getHtml(webAddr))
 
     

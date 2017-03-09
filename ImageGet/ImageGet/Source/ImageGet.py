@@ -141,6 +141,7 @@ class Widget():
         # var
         self.nonFlag = 0            # 配置标记：1,空配置;0,有配置
         self.threadpool = []        # 线程池
+        self.parserDirect = 0       # 爬虫解析方向：0,向上;1,向下
 
         # director check
         self.checkDirectory()
@@ -159,8 +160,8 @@ class Widget():
         filemenu.add_command(label = "设置存储文件夹", command = self.directoryConfig)
         filemenu.add_command(label = "重新加载配置文件", command = self.loadConfig)
         filemenu.add_separator()  
-        filemenu.add_command(label = "设置爬虫")  
-        menubar.add_cascade(label = "参数配置", menu = filemenu) 
+        filemenu.add_command(label = "设置爬虫方向",command = self.changeDirect)  
+        menubar.add_cascade(label = "参数配置", menu = filemenu)
         # link
         self.root.config(menu=menubar)
 
@@ -189,7 +190,7 @@ class Widget():
 
     def btn3Clicked(self):
         self.addMessage('保存地址为:'+self.webAddr + '\n')
-        cfgObj = Config()
+        cfgObj = Config(self.rootPath + '/'+ self.iniFile)
         cfgObj.SaveConfig(self.webAddr)
     
     def mainloop(self):
@@ -202,11 +203,19 @@ class Widget():
         thisThread.start()
         GraspList = regFind(r'<a href=(.+?\.html)>.*?</a>',htmlText)
         try :
-            self.webAddr =  'http://' + urlparse(webAddr).netloc + GraspList[1]    #爬虫目标地址
+            self.webAddr =  'http://' + urlparse(webAddr).netloc + GraspList[self.parserDirect]    #爬虫目标地址
         except Exception,e:
             print '爬虫问题',Exception,':',e
-            return 'http://' + urlparse(webAddr).netloc + GraspList[0]    #爬虫目标地址
+            self.changeDirect()
+            return 'http://' + urlparse(webAddr).netloc + GraspList[self.parserDirect]    #爬虫目标地址
     
+    def changeDirect(self):
+        if self.parserDirect ==1:
+            self.parserDirect = 0
+        elif self.parserDirect ==0:
+            self.parserDirect = 1
+        self.addMessage('爬虫设置方向为'+str(self.parserDirect)+'\n')
+
     def addMessage(self,text):
         self.txt1.insert(0.0,text)
 

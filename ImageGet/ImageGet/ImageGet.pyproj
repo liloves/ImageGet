@@ -12,7 +12,7 @@
     <OutputPath>.</OutputPath>
     <Name>ImageGet</Name>
     <RootNamespace>ImageGet</RootNamespace>
-    <IsWindowsApplication>True</IsWindowsApplication>
+    <IsWindowsApplication>False</IsWindowsApplication>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>

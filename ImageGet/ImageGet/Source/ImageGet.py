@@ -138,19 +138,26 @@ class Widget():
         self.ety1.grid(row=0, column=1, sticky=W)
         self.txt1.grid(row=2, column=0, columnspan=10, rowspan=3)
 
-        # var
+        # configure variable
+        self.configVar = {}
+        self.configVar['parserDirect'] = 0  # 爬虫解析方向：0,向上;1,向下
+        self.configVar['webAddr'] = ''
+        self.rootPath = './GraphFile'    # 默认保存位置
+        self.iniFile = 'store_html.xml'  # 默认参数保存文件
         self.nonFlag = 0            # 配置标记：1,空配置;0,有配置
-        self.threadpool = []        # 线程池
-        self.parserDirect = 0       # 爬虫解析方向：0,向上;1,向下
 
-        # director check
-        self.checkDirectory()
+        # work variable
+        self.threadpool = []        # 线程池
+
+        #
+        self.addMessage('请先到菜单设置一个存档文件夹\n')
+
         
     def menuInit(self):
         # main menu
         menubar = Menu(self.root)
         # child menu
-        filemenu = Menu(menubar, tearoff = 0)  
+        filemenu = Menu(menubar, tearoff = 0)
         filemenu.add_command(label = "显示当前地址", command = self.showWebAddr)
         filemenu.add_separator()  
         filemenu.add_command(label = "退出", command = self.root.quit)
@@ -166,32 +173,32 @@ class Widget():
         self.root.config(menu=menubar)
 
     def showWebAddr(self):
-        if self.webAddr == '':
+        if self.configVar['webAddr'] == '':
             self.addMessage('目标地址为空\n')
         else:
-            self.addMessage('设置地址为'+ self.webAddr + '\n')
+            self.addMessage('设置地址为'+ self.configVar['webAddr'] + '\n')
     
     def btn1Clicked(self):
         if self.ety1.get() != '':
-            self.webAddr = self.ety1.get()
-            self.addMessage('设置地址为:'+self.webAddr + '\n')
+            self.configVar['webAddr'] = self.ety1.get()
+            self.addMessage('设置地址为:'+self.configVar['webAddr'] + '\n')
         else:
             self.addMessage('设置地址为空\n')
 
     def btn2Clicked(self):
-        if self.webAddr == '' :
+        if self.configVar['webAddr'] == '' :
             self.addMessage('目前没有读到上次结束的地址,请输入一个网址\n')
         else:
             try:
-                thisThread = threading.Thread(target=self.webDetect,args=(self.webAddr,self))
+                thisThread = threading.Thread(target=self.webDetect,args=(self.configVar['webAddr'],self))
                 thisThread.start()
             except Exception,e:
                 print '线程创建或启动异常:',Exception,':',e
 
     def btn3Clicked(self):
-        self.addMessage('保存地址为:'+self.webAddr + '\n')
+        self.addMessage('保存地址为:'+self.configVar['webAddr'] + '\n')
         cfgObj = Config(self.rootPath + '/'+ self.iniFile)
-        cfgObj.SaveConfig(self.webAddr)
+        cfgObj.XmlSave(self.configVar)
     
     def mainloop(self):
         self.root.mainloop()
@@ -203,39 +210,39 @@ class Widget():
         thisThread.start()
         GraspList = regFind(r'<a href=(.+?\.html)>.*?</a>',htmlText)
         try :
-            self.webAddr =  'http://' + urlparse(webAddr).netloc + GraspList[self.parserDirect]    #爬虫目标地址
+            self.configVar['webAddr'] =  'http://' + urlparse(webAddr).netloc + GraspList[self.configVar['parserDirect']]    #爬虫目标地址
         except Exception,e:
             print '爬虫问题',Exception,':',e
             self.changeDirect()
-            return 'http://' + urlparse(webAddr).netloc + GraspList[self.parserDirect]    #爬虫目标地址
+            return 'http://' + urlparse(webAddr).netloc + GraspList[self.configVar['parserDirect']]    #爬虫目标地址
     
     def changeDirect(self):
-        if self.parserDirect ==1:
-            self.parserDirect = 0
-        elif self.parserDirect ==0:
-            self.parserDirect = 1
-        self.addMessage('爬虫设置方向为'+str(self.parserDirect)+'\n')
+        if self.configVar['parserDirect'] ==1:
+            self.configVar['parserDirect'] = 0
+        elif self.configVar['parserDirect'] ==0:
+            self.configVar['parserDirect'] = 1
+        self.addMessage('爬虫设置方向为'+str(self.configVar['parserDirect'])+'\n')
 
     def addMessage(self,text):
         self.txt1.insert(0.0,text)
 
-    def checkDirectory(self):
-        self.rootPath = './GraphFile'    # 默认保存位置
-        if not os.path.exists(self.rootPath):
-            self.addMessage('目前未设定保存文件夹,请指定一个保存地址\n')
-            self.directoryConfig()
-        self.loadConfig()
-
+    # 加载配置文件
     def loadConfig(self):
         # 读取历史配置
-        self.iniFile = 'store_html.ini'
-        self.ConfigObj = Config(self.rootPath + '/'+ self.iniFile)         #配置文件
-        self.webAddr = self.ConfigObj.LoadConfig()  #加载保存的地址
-        if self.webAddr == '':
-            self.nonFlag = 1
-            self.addMessage('目前没有读到上次结束的地址,请输入一个网址\n')
+        FilePath = self.rootPath + '/'+ self.iniFile
+        if os.path.exists(FilePath):
+            self.ConfigObj = Config(FilePath)         #配置文件
+            elmtdic = self.ConfigObj.XmlLoad()  #加载保存的地址
+            for key,val in elmtdic.iteritems():
+                if self.configVar.has_key(key):
+                    self.configVar[key] = val
+            if self.configVar['webAddr'] == '':
+                self.nonFlag = 1
+                self.addMessage('目前没有读到上次结束的地址,请输入一个网址\n')
+            else:
+                self.addMessage('上次结束的地址为:' + self.configVar['webAddr'] + '\n')
         else:
-            self.addMessage('上次结束的地址为:' + self.webAddr + '\n')
+            self.addMessage('没有发现配置文件\n')
 
     def directoryConfig(self):
         getPath =  \
@@ -244,16 +251,15 @@ class Widget():
         if getPath != '':
             self.addMessage(u'设置目录为: ' + getPath + u'\n')
             self.rootPath = getPath
+            self.loadConfig()
         else:
             self.addMessage(u'未设置目录\n')
-            #self.addMessage(u'未设置目录，将使用默认路径: ' + self.rootPath + u'\n')
-            #if not os.path.exists(self.rootPath):
-                #os.mkdir(self.rootPath)    # 未存在默认目录需要创建
+
             
 
 # configuration file save & load
 class Config():
-    def __init__(self,configFileName = 'store_html.ini'):
+    def __init__(self,configFileName = '.\store_html.xml'):
         self.configFileName = configFileName
     
     def LoadConfig(self):
@@ -266,13 +272,29 @@ class Config():
              file_object.close()
         return fileText
 
-    def SaveConfig(self,text):
-        file_object = open(self.configFileName, 'w')
-        try:
-             file_object.write(text)
-        finally:
-             file_object.close()
-             
+    # 保存字典至xml,使用单层字典，后续可能会加入多级树结构
+    def XmlSave(self,dic):
+        from xml.etree.ElementTree import Element,SubElement,tostring
+        from xml.dom.minidom import parseString
+        info = Element('elements')
+        for key,val in dic.iteritems():
+            SubElement(info,key).text = str(val)
+        dom = parseString(tostring(info))
+        filename = self.configFileName
+        f = open(filename, "w")
+        f.write(dom.toprettyxml('    '))
+        f.close()
+    
+    # 加载xml至字典
+    def XmlLoad(self):
+        from xml.etree import ElementTree
+        filename = self.configFileName
+        dic = {}
+        tree = ElementTree.parse(filename)
+        for elmt in tree.getiterator():
+            dic[elmt.tag] = elmt.text
+        return dic
+
 
 if __name__ == '__main__':
 

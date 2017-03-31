@@ -110,33 +110,37 @@ class AnchorParser(HTMLParser):
             AddrGroup.append(urljoin(webAddr,x))
         return AddrGroup
 
- 
+
+
+
 # Main Widget class for showing the UI
 class Widget():
     
     def __init__(self):
-
-        # tkinter main
+        # widget main
         self.root = Tk()
-        self.root.minsize(400, 200)
+        #self.root.minsize(300, 200)
         self.root.title("Get Image Serve")
 
         # menu
         self.menuInit()
 
         # active elements
-        self.butnForm = Frame()
-        self.btn1 = Button(self.butnForm,text = "载入地址",command = self.btn1Clicked).pack(expand=YES, fill="both")
-        self.btn2 = Button(self.butnForm,text = "下载",command = self.btn2Clicked).pack(expand=YES, fill="both")
-        self.btn3 = Button(self.butnForm,text = "保存地址",command = self.btn3Clicked).pack(expand=YES, fill="both")
-        self.ety1 = Entry(self.root)
         self.txt1= Text(self.root)
-        self.txt1.bind("<KeyPress>", lambda e : "break")
+        #self.txt1.bind("<KeyPress>", lambda e : "break")
 
-        ## pack
-        self.butnForm.grid(row=0, column=0, sticky=W)
-        self.ety1.grid(row=0, column=1, sticky=W)
-        self.txt1.grid(row=2, column=0, columnspan=10, rowspan=3)
+        # Bottom Frame element
+        self.bottomForm = Frame()
+        self.ety1 = Entry(self.bottomForm,width = 40)
+        self.btn2 = Button(self.bottomForm,width = 10,text = "下载",command = self.btn2Clicked)
+        self.btn1 = Button(self.bottomForm,width = 10,text = " 确认地址",command = self.btn1Clicked)
+        self.ety1.grid(row=0, column=0)
+        self.btn1.grid(row=0, column=1)
+        self.btn2.grid(row=0, column=2)
+
+        ## main pack
+        self.txt1.grid(row=0, column=0)
+        self.bottomForm.grid(row=2, column=0, sticky=W)
 
         # configure variable
         self.configVar = {}
@@ -149,26 +153,43 @@ class Widget():
         # work variable
         self.threadpool = []        # 线程池
 
-        #
-        self.addMessage('请先到菜单设置一个存档文件夹\n')
+        # startup message
+        self.addMessage('请先到菜单（参数设置）->（设置存储文件夹）设置一个存档文件夹\n')
+        self.addMessage('退出前到菜单（参数设置）->（保存当前配置）保存当前进度\n')
 
         
     def menuInit(self):
         # main menu
         menubar = Menu(self.root)
+        
         # child menu
         filemenu = Menu(menubar, tearoff = 0)
         filemenu.add_command(label = "显示当前地址", command = self.showWebAddr)
         filemenu.add_separator()  
         filemenu.add_command(label = "退出", command = self.root.quit)
         menubar.add_cascade(label = "开始", menu = filemenu)
+        
         # child menu
         filemenu = Menu(menubar, tearoff=0)  
         filemenu.add_command(label = "设置存储文件夹", command = self.directoryConfig)
+        filemenu.add_command(label = "打开存储文件夹", command = self.openRoot)
+        filemenu.add_separator()
         filemenu.add_command(label = "重新加载配置文件", command = self.loadConfig)
+        filemenu.add_command(label = "保存当前配置", command = self.btn3Clicked)
         filemenu.add_separator()  
-        filemenu.add_command(label = "设置爬虫方向",command = self.changeDirect)  
+        filemenu.add_command(label = "设置爬虫方向",command = self.changeDirect) 
+        filemenu.add_separator()
+        filemenu.add_command(label = "设置数据库存储", command = self.btn3Clicked)
+        
         menubar.add_cascade(label = "参数配置", menu = filemenu)
+
+        # child menu
+        filemenu = Menu(menubar, tearoff=0)
+        filemenu.add_command(label = "检查运行线程", command = self.checkThread)
+        
+
+        menubar.add_cascade(label = "查看运行状态", menu = filemenu)
+        
         # link
         self.root.config(menu=menubar)
 
@@ -184,7 +205,7 @@ class Widget():
             self.addMessage('设置地址为:'+self.configVar['webAddr'] + '\n')
         else:
             self.addMessage('设置地址为空\n')
-
+    
     def btn2Clicked(self):
         if self.configVar['webAddr'] == '' :
             self.addMessage('目前没有读到上次结束的地址,请输入一个网址\n')
@@ -194,7 +215,8 @@ class Widget():
                 thisThread.start()
             except Exception,e:
                 print '线程创建或启动异常:',Exception,':',e
-
+    
+    # 保存当前状态
     def btn3Clicked(self):
         self.addMessage('保存地址为:'+self.configVar['webAddr'] + '\n')
         cfgObj = Config(self.rootPath + '/'+ self.iniFile)
@@ -203,28 +225,37 @@ class Widget():
     def mainloop(self):
         self.root.mainloop()
 
+    # 启动网页分析
     def webDetect(self,webAddr,IOobj):
-        IOobj.addMessage('加载地址:' + webAddr + '\n')
+        IOobj.addMessage('准备打开地址:' + webAddr + '\n')
         htmlText = getHtml(webAddr)
         thisThread = threading.Thread(target=getImg,args=(htmlText, IOobj, self.rootPath))
         thisThread.start()
-        GraspList = regFind(r'<a href=(.+?\.html)>.*?</a>',htmlText)
-        try :
-            self.configVar['webAddr'] =  'http://' + urlparse(webAddr).netloc + GraspList[self.configVar['parserDirect']]    #爬虫目标地址
+        self.rptl(htmlText, webAddr)
+
+    # 爬虫分析函数
+    # reptile analyze
+    def rptl(self, htmlText,webAddr):
+        smellWord = r'<a href=(.+?\.html)>.*?</a>'
+        GraspList = regFind(smellWord, htmlText)
+        # 定制爬虫方式
+        try:
+            self.configVar['webAddr'] =  'http://' + urlparse(webAddr).netloc + GraspList[int(self.configVar['parserDirect'])]    #爬虫目标地址
         except Exception,e:
             print '爬虫问题',Exception,':',e
-            self.changeDirect()
-            return 'http://' + urlparse(webAddr).netloc + GraspList[self.configVar['parserDirect']]    #爬虫目标地址
-    
+        return GraspList        
+            
+    # 改变爬虫方向
     def changeDirect(self):
-        if self.configVar['parserDirect'] ==1:
-            self.configVar['parserDirect'] = 0
-        elif self.configVar['parserDirect'] ==0:
-            self.configVar['parserDirect'] = 1
+        if self.configVar['parserDirect'] == '1':
+            self.configVar['parserDirect'] = '0'
+        elif self.configVar['parserDirect'] == '0':
+            self.configVar['parserDirect'] = '1'
         self.addMessage('爬虫设置方向为'+str(self.configVar['parserDirect'])+'\n')
-
-    def addMessage(self,text):
-        self.txt1.insert(0.0,text)
+    
+    # 文本消息窗
+    def addMessage(self, text, position = END):
+        self.txt1.insert(position, text)
 
     # 加载配置文件
     def loadConfig(self):
@@ -254,6 +285,13 @@ class Widget():
             self.loadConfig()
         else:
             self.addMessage(u'未设置目录\n')
+
+    def openRoot(self):
+        os.startfile(self.rootPath)
+
+    def checkThread(self):
+        couts = threading.active_count()
+        self.addMessage('当前运行线程数:'+str(couts)+'\n')
 
             
 

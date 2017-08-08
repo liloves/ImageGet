@@ -16,3 +16,8 @@
 >· Python2.7<br>
 >· Visual Studio 2013<br>
 >· Python Tools for Visual Studio<br>
+
+## 发布工具说明
+
+>· Pyinstaller<br>
+

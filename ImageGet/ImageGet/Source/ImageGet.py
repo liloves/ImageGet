@@ -8,140 +8,43 @@ Description: Use various module to complete the Web Detect with UI form
              set the website address and smell the files in HTML
 '''
 
-import urllib
-import re
+# python 2.7 libirary
 import os
-
 from Tkinter import *
 import tkFileDialog
 import threading
 
-import zlib
-from HTMLParser import HTMLParser
-from cStringIO import StringIO
-from urlparse import urljoin, urlparse
-
-
-
-'''
-用于匹配正则式,返回匹配结果
-用法regFind(表达式,文本内容)
-'''
-def regFind(reg,text):
-    pattern  =  re.compile(reg)
-    return re.findall(pattern,text)
-
-
-'''用于获取html源,返回对应文本内容'''
-def getHtml(url):
-    fp = urllib.urlopen(url)
-    if fp.getcode() == 200:
-        bytesText = fp.read()
-        if fp.headers.get('content-encoding') == 'gzip':
-            return zlib.decompress(bytesText, 16+zlib.MAX_WBITS)
-        else:
-            return bytesText
-    elif fp.getcode() == 404:
-        print u'网址未找到'
-        return ''
-
-    
-'''
-保存图片列表至对应路径
-用法saveGraph(路径,图片url列表)
-'''
-def saveGraph(readyPath,imglist):
-    x = 0
-    for imgurl in imglist:
-        try:
-            urllib.urlretrieve(imgurl, readyPath + '/%s.jpg' % x)
-            x += 1
-        except Exception,e:
-            print e
-            return 0
-    return x
-        
-
-def getImg(html, IOobj, rootPath):
-    imglist = regFind(r'<img.*?src="(.+?\.jpg)".*?>',html)   #解析图像列表
-    titlelist = regFind(r'<head>[\s\S]*<title>([\s\S]*)</title>[\s\S]*</head>',html)
-    htmlTitle = titlelist[0].decode('GBK')       #从list中提取出title的字符串变量,并解码为unicode
-    htmlTitleUTF8 = htmlTitle.encode('utf-8')
-    IOobj.addMessage(htmlTitleUTF8 + '>>>' + "共有" + str(len(imglist)) + "张图片\n")
-    readyPath = rootPath + '/' + htmlTitle
-    x = 0                          # 图片计数器
-    if not (os.path.exists(readyPath) and len(os.listdir(readyPath)) == len(imglist) ):
-        # 如果不同时满足(文件夹存在和图片下载完整)则需要新下载所有内容
-        # 尝试创建目录
-        if not os.path.exists(readyPath):
-            try:
-                os.mkdir(readyPath)
-            except Exception,e:
-                print "文件夹创建异常:",htmlTitle,Exception,":",e  # 防止新建文件夹异常
-        # 录建立后下载图片
-        if os.path.exists(readyPath):
-            x = saveGraph(readyPath,imglist)
-    printContext = htmlTitleUTF8 + ">>>获取图片" + str(x) + "张\n"
-    IOobj.addMessage(printContext)    # 引用了控件对象
-
-
-
-# HTML Parser to locate the tag of charset
-class AnchorParser(HTMLParser):
-        
-    def handle_starttag(self, tag, attrs):
-        self.tag_name = 'meta'
-        self.tag_context = 'charset'
-        if tag != self.tag_name:
-            return
-        print tag
-        print attrs
-        if not hasattr(self, 'data'):
-            self.data = []
-        for attr in attrs:
-            if attr[0] == self.tag_context:
-                self.data.append(attr[1])
-
-    def getLink(self, webAddr):
-        HtmlText = getHtml(webAddr)
-        self.feed(HtmlText)
-        AddrGroup = []
-        for x in self.data:
-            AddrGroup.append(urljoin(webAddr,x))
-        return AddrGroup
-
-
-
+# user maked
+from ListTable import *
+from Notebook import *
+from Htmlanalyze import *
+from ImageExplorer import *
 
 # Main Widget class for showing the UI
 class Widget():
     
     def __init__(self):
-        # widget main
-        self.root = Tk()
-        #self.root.minsize(300, 200)
-        self.root.title("Get Image Serve")
 
+        # root/top widget
+        self.root = Tk()   # main object of widget
+        self.root.title("Get Image Serve")
+        self.root.columnconfigure(0, weight=1)
+        w, h = self.root.maxsize()
+        self.root.geometry("{}x{}".format(w, h)) #看好了，中间的是小写字母x
+        
         # menu
         self.menuInit()
+        
+        # switch tag frame
+        nb = Notebook(self.root)
+        frame1 = self.Frame1_init(nb())
+        self.threadList = ListTable(nb(),3,title = 1) # List to show threading
+        self.imexp = ImageExplorer(nb())  # image explorer module
 
-        # active elements
-        self.txt1= Text(self.root)
-        #self.txt1.bind("<KeyPress>", lambda e : "break")
-
-        # Bottom Frame element
-        self.bottomForm = Frame()
-        self.ety1 = Entry(self.bottomForm,width = 40)
-        self.btn2 = Button(self.bottomForm,width = 10,text = "下载",command = self.btn2Clicked)
-        self.btn1 = Button(self.bottomForm,width = 10,text = " 确认地址",command = self.btn1Clicked)
-        self.ety1.grid(row=0, column=0)
-        self.btn1.grid(row=0, column=1)
-        self.btn2.grid(row=0, column=2)
-
-        ## main pack
-        self.txt1.grid(row=0, column=0)
-        self.bottomForm.grid(row=2, column=0, sticky=W)
-
+        nb.add_screen(frame1, "主页")
+        nb.add_screen(self.threadList(), "注册线程")
+        nb.add_screen(self.imexp(), "图片浏览器")
+     
         # configure variable
         self.configVar = {}
         self.configVar['parserDirect'] = 0  # 爬虫解析方向：0,向上;1,向下
@@ -149,6 +52,7 @@ class Widget():
         self.rootPath = './GraphFile'    # 默认保存位置
         self.iniFile = 'store_html.xml'  # 默认参数保存文件
         self.nonFlag = 0            # 配置标记：1,空配置;0,有配置
+        self.HtmlAnaObj = Htmlanalyze()
 
         # work variable
         self.threadpool = []        # 线程池
@@ -156,7 +60,6 @@ class Widget():
         # startup message
         self.addMessage('请先到菜单（参数设置）->（设置存储文件夹）设置一个存档文件夹\n')
         self.addMessage('退出前到菜单（参数设置）->（保存当前配置）保存当前进度\n')
-
         
     def menuInit(self):
         # main menu
@@ -165,34 +68,67 @@ class Widget():
         # child menu
         filemenu = Menu(menubar, tearoff = 0)
         filemenu.add_command(label = "显示当前地址", command = self.showWebAddr)
-        filemenu.add_separator()  
+        filemenu.add_separator()
         filemenu.add_command(label = "退出", command = self.root.quit)
         menubar.add_cascade(label = "开始", menu = filemenu)
         
         # child menu
-        filemenu = Menu(menubar, tearoff=0)  
+        filemenu = Menu(menubar, tearoff=0)
         filemenu.add_command(label = "设置存储文件夹", command = self.directoryConfig)
         filemenu.add_command(label = "打开存储文件夹", command = self.openRoot)
         filemenu.add_separator()
         filemenu.add_command(label = "重新加载配置文件", command = self.loadConfig)
         filemenu.add_command(label = "保存当前配置", command = self.btn3Clicked)
-        filemenu.add_separator()  
+        filemenu.add_separator()
         filemenu.add_command(label = "设置爬虫方向",command = self.changeDirect) 
         filemenu.add_separator()
         filemenu.add_command(label = "设置数据库存储", command = self.btn3Clicked)
-        
         menubar.add_cascade(label = "参数配置", menu = filemenu)
 
         # child menu
         filemenu = Menu(menubar, tearoff=0)
         filemenu.add_command(label = "检查运行线程", command = self.checkThread)
-        
-
         menubar.add_cascade(label = "查看运行状态", menu = filemenu)
         
         # link
         self.root.config(menu=menubar)
+    
+    def Frame1_init(self,root):
+        # Bottom Frame element
+        self.bottomForm = Frame(root)
 
+        # active elements
+        self.txt1= Text(self.bottomForm)
+        self.txt1.bind("<KeyPress>", lambda e : "break")
+
+        self.ety1 = Entry(self.bottomForm)
+        self.btn2 = Button(self.bottomForm,text = "下载",command = self.btn2Clicked)
+        self.btn1 = Button(self.bottomForm,text = " 确认地址",command = self.btn1Clicked)
+
+        # grid configure
+        self.txt1.grid(row=0, column=0,columnspan = 3,sticky=N+S+E+W)
+        self.ety1.grid(row=1, column=0,sticky=N+S+E+W)
+        self.btn1.grid(row=1, column=1,sticky=N+S+E+W)
+        self.btn2.grid(row=1, column=2,sticky=N+S+E+W)
+
+        return self.bottomForm
+                       
+    def Frame2_init(self,root):
+        
+        self.threadFrame = Frame(root)
+        
+        # OptionMenu
+        #self.selectMenu1 = OptionMenu(self.threadFrame,'爬虫方向','上','下')
+        #self.selectMenu1.grid(row=2,column = 1,sticky=N+S+E+W)
+
+        # List
+        #self.threadList = Listbox(self.threadFrame)
+
+        # grid
+        self.threadList.grid(row = 0, column = 1,rowspan = 3,stick = N+S+E+W)
+
+        return self.threadFrame
+    
     def showWebAddr(self):
         if self.configVar['webAddr'] == '':
             self.addMessage('目标地址为空\n')
@@ -229,7 +165,7 @@ class Widget():
     def webDetect(self,webAddr,IOobj):
         IOobj.addMessage('准备打开地址:' + webAddr + '\n')
         htmlText = getHtml(webAddr)
-        thisThread = threading.Thread(target=getImg,args=(htmlText, IOobj, self.rootPath))
+        thisThread = threading.Thread(target=getImg,args=(htmlText, IOobj, self.rootPath, self.threadList))
         thisThread.start()
         self.rptl(htmlText, webAddr)
 
@@ -243,7 +179,7 @@ class Widget():
             self.configVar['webAddr'] =  'http://' + urlparse(webAddr).netloc + GraspList[int(self.configVar['parserDirect'])]    #爬虫目标地址
         except Exception,e:
             print '爬虫问题',Exception,':',e
-        return GraspList        
+        return GraspList      
             
     # 改变爬虫方向
     def changeDirect(self):
@@ -284,7 +220,7 @@ class Widget():
             self.rootPath = getPath
             self.loadConfig()
         else:
-            self.addMessage(u'未设置目录\n')
+            self.addMessage('未设置目录\n')
 
     def openRoot(self):
         os.startfile(self.rootPath)
@@ -310,7 +246,7 @@ class Config():
              file_object.close()
         return fileText
 
-    # 保存字典至xml,使用单层字典，后续可能会加入多级树结构
+    # 保存字典至xml,使用单层字典，使用元素树结构
     def XmlSave(self,dic):
         from xml.etree.ElementTree import Element,SubElement,tostring
         from xml.dom.minidom import parseString
@@ -334,6 +270,7 @@ class Config():
         return dic
 
 
+# use as start up or test
 if __name__ == '__main__':
 
     winObj = Widget()

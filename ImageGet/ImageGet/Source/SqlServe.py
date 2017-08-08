@@ -11,10 +11,13 @@ class SqlServe:
                 'database':'sakila',
                 'charset':'utf8'
                 }
+
+        connectState = 0    # 0 for off, 1 for open
     
     def connect(self):
         try:
             self.cnn = mysql.connector.connect(**config)
+            connectState = 1
         except mysql.connector.Error as e:
             print('connect fails!{}'.format(e))
 

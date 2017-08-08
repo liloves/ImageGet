@@ -23,9 +23,16 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Source\Htmlanalyze.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Source\ImageExplorer.py" />
     <Compile Include="Source\ImageGet.py" />
+    <Compile Include="Source\ListTable.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Source\SqlServe.py" />
-    <Compile Include="Source\TestFile.py" />
+    <Compile Include="Source\Notebook.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Source\" />

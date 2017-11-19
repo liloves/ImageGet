@@ -30,7 +30,7 @@ class Widget():
         self.root.title("Get Image Serve")
         self.root.columnconfigure(0, weight=1)
         w, h = self.root.maxsize()
-        self.root.geometry("{}x{}".format(w, h)) #看好了，中间的是小写字母x
+        #self.root.geometry("{}x{}".format(w, h)) #看好了，中间的是小写字母x
         
         # menu
         self.menuInit()
@@ -140,7 +140,7 @@ class Widget():
             self.configVar['webAddr'] = self.ety1.get()
             self.addMessage('设置地址为:'+self.configVar['webAddr'] + '\n')
         else:
-            self.addMessage('设置地址为空\n')
+            self.addMessage('设置地址为空，不做设置\n')
     
     def btn2Clicked(self):
         if self.configVar['webAddr'] == '' :

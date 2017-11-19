@@ -23,18 +23,29 @@ class Htmlanalyze:
         #     ]
 
         self.b = r'<meta[ 	]+http-equiv=["\']?content-type["\']?[ 	]+content=["\']?text/html;[ 	]*charset=([0-9-a-zA-Z]+)["\']?'
+        #self.b = r'<meta[ 	]*charset=([0-9-a-zA-Z]+)["\']?'
         self.B = re.compile(self.b, re.IGNORECASE)
 
-    def searchCharset(self, a):
+    def searchCharset1(self, a):
         for ax in a:
             self.r1 = self.B.search(ax)
-            if r1:
-                print self.r1.group()
-                print self.r1.group(1), len(self.r1.group())
+            if self.r1:
+                #print self.r1.group()
+                #print self.r1.group(1), len(self.r1.group())
                 return self.r1.group()
             else:
                 print 'not match'
                 return None
+
+    def  searchCharset(self, a):
+        self.r1 = self.B.search(a)
+        if self.r1:
+            print self.r1.group()
+            print self.r1.group(1), len(self.r1.group())
+            return self.r1.group(1)
+        else:
+            print 'not match'
+            return None
 
 
 '''
@@ -63,8 +74,8 @@ def getHtml(url):
 def getImg(html, IOobj, rootPath, Listobj, strCoder = 'gb2312'):
     imglist = regFind(r'<img.*?src="(.+?\.jpg)".*?>',html)   #解析图像列表
     titlelist = regFind(r'<head>[\s\S]*<title>([\s\S]*)</title>[\s\S]*</head>',html)
-
-    print strCoder
+    HtmlanalyzeObj = Htmlanalyze()
+    strCoder =  HtmlanalyzeObj.searchCharset(html)
     htmlTitle = titlelist[0].decode(strCoder)       #从list中提取出title的字符串变量,并解码为unicode
     htmlTitleUTF8 = htmlTitle.encode('utf-8')
     dict = [htmlTitleUTF8,str(len(imglist)),0]
@@ -83,6 +94,7 @@ def getImg(html, IOobj, rootPath, Listobj, strCoder = 'gb2312'):
                 print "文件夹创建异常:",htmlTitle,Exception,":",e  # 防止新建文件夹异常
         # 录建立后下载图片
         if os.path.exists(readyPath):
+            print imglist
             x = saveGraph(readyPath,imglist)
     printContext = htmlTitleUTF8 + ">>>获取图片" + str(x) + "张\n"
     IOobj.addMessage(printContext)    # 引用了控件对象
@@ -120,13 +132,23 @@ def saveGraph(readyPath,imglist):
     x = 0
     for imgurl in imglist:
         try:
-            urllib.urlretrieve(imgurl, readyPath + '/%s.jpg' % x)
+            urllib.urlretrieve(imgurl, readyPath + '/%s.jpg' % x, reporthook)
             x += 1
         except Exception,e:
             print e
             return 0
     return x
 
-
+def reporthook(block_read,block_size,total_size):
+  if not block_read:
+    print "connection opened";
+    return
+  if total_size<0:
+    #unknown size
+    print "read %d blocks (%dbytes)" %(block_read,block_read*block_size);
+  else:
+    amount_read=block_read*block_size;
+    print 'Read %d blocks,or %d/%d' %(block_read,block_read*block_size,total_size);
+  return
 
 

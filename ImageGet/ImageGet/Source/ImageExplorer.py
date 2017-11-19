@@ -6,7 +6,8 @@ import Tkinter as tk
 import os
 import tkFileDialog
 
-class ImageExplorer(object):   #定义GUI的应用程序类，派生于Frmae  
+class ImageExplorer(object):   #定义GUI的应用程序类，派生于Frmae
+
     def __init__(self, master=None, filepath = None):   #构造函数，master为父窗口
 
         self.mainFrame = tk.Frame(master)
@@ -31,35 +32,43 @@ class ImageExplorer(object):   #定义GUI的应用程序类，派生于Frmae
 
         self.lblImage=tk.Label(self.mainFrame)  #创建Label组件以显示图像
         self.lblImage.grid(row = 1,column = 1, sticky = 'nsew')   #调整显示位置和大小
-        self.Lst = tk.Listbox(self.mainFrame)   #创建左侧文件夹清单
+        self.Lst = tk.Listbox(self.mainFrame)   #创建左侧文件树清单
+        self.Lst.bind("<<ListboxSelect>>",self.select_file)
         self.Lst.grid(row = 1,column = 0, sticky = 'nsew')
      
     def open_file(self,filepath = None):
         if filepath == None:
-            self.filepath =  \
+            repath = \
             tkFileDialog.askdirectory(parent=self.mainFrame,initialdir="/",  \
             title='选取保存内容的文件夹')
+            if repath != '':
+                self.filepath =  repath
             #print self.filepath  # 显示打开的路径
         else:
             self.filepath = filepath
-
+        
+        # 筛选出图像文件和文件夹
         files = os.listdir(self.filepath)   #获取图像文件名列表
-        imageFiles = []
-        dirArray = []
+        imageFiles = [] # 图像阵列
+        dirArray = []   # 目录阵列
         for fileName in files:
-            fileSuffix = os.path.splitext(fileName)[1][1:]
-            for suffixCandidate in self.suffixArray:
+            fileSuffix = os.path.splitext(fileName)[1][1:]  # 获取文件后缀名
+            for suffixCandidate in self.suffixArray:   # 指定后缀名检查
                 if fileSuffix == suffixCandidate:
                     imageFiles.append(fileName)
                     break
 
-            if os.path.isdir( (self.filepath + u'\\' + fileName) ):
+            if os.path.isdir( (self.filepath + u'\\' + fileName) ):    # 确认文件夹
                 dirArray.append(fileName)
         
-        print dirArray
+        # first list all files and documents
+        self.Lst.delete(0,tk.END)
         for dir in dirArray:
             self.Lst.insert(tk.END,dir)
+        for dir in imageFiles:
+            self.Lst.insert(tk.END,dir)
 
+        # first fresh
         self.files = imageFiles
 
         self.index=0    #图片索引，初始显示第一张
@@ -69,13 +78,13 @@ class ImageExplorer(object):   #定义GUI的应用程序类，派生于Frmae
     def fresh_show(self):
         self.showfile()
 
-    def prev(self):  #事件处理函数
+    def prev(self):   #向前翻页事件处理函数
         self.showfile(-1)
         
-    def next(self):   #事件处理函数  
+    def next(self):   #向后翻页事件处理函数  
         self.showfile(1)
         
-    def showfile(self,n = 0):  
+    def showfile(self,n = 0):
         if len(self.files) == 0:
             return None
         self.index += n
@@ -85,12 +94,35 @@ class ImageExplorer(object):   #定义GUI的应用程序类，派生于Frmae
             self.index=0    #循环显示第一张
 
         filename = self.filepath + '\\'+ self.files[self.index]
+        print filename
         imrd = Image.open(filename)
-        im = self.resize_by_height(imrd,self.lblImage.winfo_screenheight())
+        im = self.resize_auto(imrd,self.lblImage.winfo_screenheight()/2,self.lblImage.winfo_screenwidth()/2)
         self.image_Tk_obj = ImageTk.PhotoImage(im)
         self.lblImage['image']= self.image_Tk_obj
         return self.image_Tk_obj
-   
+ 
+    def resize_auto(self, im, con_height = 700 , con_width = 1300):
+        """按照宽度进行所需比例缩放"""
+        con_height = float(con_height)
+        con_width = float(con_width)
+        (x, y) = im.size
+        width_divide_ratio = x/con_width
+        height_divide_ratio = y/con_height
+
+        if width_divide_ratio >= height_divide_ratio:
+            x_s = int(x/width_divide_ratio)
+            y_s = int(y/width_divide_ratio)
+            print (x_s, y_s)
+            out = im.resize((x_s, y_s), Image.ANTIALIAS)
+        else:
+            x_s = int(x/height_divide_ratio)
+            y_s = int(y/height_divide_ratio)
+            print (x_s, y_s)
+            out = im.resize((x_s, y_s), Image.ANTIALIAS)
+        
+        return out
+        
+
     def resize_by_height(self, im, con_height = 700):  
         """按照宽度进行所需比例缩放"""
         con_height = float(con_height)
@@ -104,6 +136,14 @@ class ImageExplorer(object):   #定义GUI的应用程序类，派生于Frmae
         #print (x_s, y_s)
         out = im.resize((x_s, y_s), Image.ANTIALIAS)
         return out
+
+    def select_file(self,index):
+        Name = self.Lst.get(self.Lst.curselection())
+        filename = self.filepath + '\\'+ Name
+        imrd = Image.open(filename)
+        im = self.resize_by_height(imrd,self.lblImage.winfo_screenheight())
+        self.image_Tk_obj = ImageTk.PhotoImage(im)
+        self.lblImage['image']= self.image_Tk_obj
           
 
 
